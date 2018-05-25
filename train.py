@@ -30,7 +30,7 @@ def readIMDB(dir_url, seg='train'):
 
 
 #%%
-data_dir = 'C:\\Users\\fierc\\Downloads\\aclImdb_v1.tar\\aclImdb_v1\\aclImdb\\'
+data_dir = '../aclImdb/'
 context = mx.gpu(0)
 batch_size = 32
 #%%
@@ -127,6 +127,7 @@ test_dataloader = gluon.data.DataLoader(test_data, batch_size=32, shuffle=True)
 #%%
 net = SANet(shape=(128, batch_size), Vocad_len=len(vocab), h=8, ctx=context)
 net.initialize(mx.init.Xavier(), ctx=context)
+net.hybridize()
 trainer = gluon.Trainer(net.collect_params(), 'Adam')
 loss = gluon.loss.SoftmaxCrossEntropyLoss()
 
@@ -165,8 +166,8 @@ for epoch in range(num_epochs):
         total_L += nd.sum(L).asscalar()
         ntotal += L.size
         if i % 30 == 0 and i != 0:
-            print(
-                'Epoch %d. batch %d. Loss %6f' % (epoch, i, total_L / ntotal))
+            print('Epoch %d. batch %d. Loss %6f' % (epoch, i,
+                                                    total_L / ntotal))
             total_L = 0
             ntotal = 0
 
@@ -184,7 +185,7 @@ for epoch in range(num_epochs):
     print('[epoch %d] total time %.2f s' % (epoch,
                                             (time.time() - start_epoch_time)))
 
-print('total training throughput %.2f samples/s' % (
-    (batch_size * len(x_train) * num_epochs) /
-    (time.time() - start_train_time)))
+print('total training throughput %.2f samples/s' %
+      ((batch_size * len(x_train) * num_epochs) /
+       (time.time() - start_train_time)))
 print('total training time %.2f s' % ((time.time() - start_train_time)))
