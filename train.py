@@ -30,9 +30,12 @@ def readIMDB(dir_url, seg='train'):
 
 
 #%%
-data_dir = '../aclImdb/'
-context = mx.gpu(0)
+data_dir = './aclImdb/'
+context = mx.gpu(1)
 batch_size = 32
+max_len = 100
+embeding_size = 128
+
 #%%
 train_dataset = readIMDB(data_dir, 'train')
 test_dataset = readIMDB(data_dir, 'test')
@@ -111,29 +114,23 @@ def pad_samples(x_encoded_samples, maxlen=100, val=0):
 x_encoded_train = encode_samples(train_tokenized, vocab)
 x_encoded_test = encode_samples(test_tokenized, vocab)
 
-x_train = nd.array(pad_samples(x_encoded_train, 100, 0), ctx=context)
-x_test = nd.array(pad_samples(x_encoded_test, 100, 0), ctx=context)
+x_train = nd.array(pad_samples(x_encoded_train, max_len, 0), ctx=context)
+x_test = nd.array(pad_samples(x_encoded_test, max_len, 0), ctx=context)
 
 y_train = nd.array([score for text, score in train_dataset], ctx=context)
 y_test = nd.array([score for text, score in test_dataset], ctx=context)
 
+#%%
 train_data = gluon.data.ArrayDataset(x_train, y_train)
 train_dataloader = gluon.data.DataLoader(
-    train_data, batch_size=32, shuffle=True)
+    train_data, batch_size=batch_size, shuffle=True)
 
 test_data = gluon.data.ArrayDataset(x_test, y_test)
-test_dataloader = gluon.data.DataLoader(test_data, batch_size=32, shuffle=True)
+test_dataloader = gluon.data.DataLoader(
+    test_data, batch_size=batch_size, shuffle=True)
+
 
 #%%
-net = SANet(shape=(128, batch_size), Vocad_len=len(vocab), h=8, ctx=context)
-net.initialize(mx.init.Xavier(), ctx=context)
-net.hybridize()
-trainer = gluon.Trainer(net.collect_params(), 'Adam')
-loss = gluon.loss.SoftmaxCrossEntropyLoss()
-
-#%%
-
-
 def eval(dataloader):
     total_L = 0
     ntotal = 0
@@ -150,7 +147,16 @@ def eval(dataloader):
 
 
 #%%
-num_epochs = 1
+net = SANet(
+    shape=(embeding_size, max_len), Vocad_len=len(vocab), h=8, Is_PE=False)
+net.initialize(mx.init.Uniform(.1), ctx=context)
+net.hybridize()
+trainer = gluon.Trainer(net.collect_params(), 'Adam')
+loss = gluon.loss.SoftmaxCrossEntropyLoss()
+loss.hybridize()
+
+#%%
+num_epochs = 2
 start_train_time = time.time()
 for epoch in range(num_epochs):
     start_epoch_time = time.time()
